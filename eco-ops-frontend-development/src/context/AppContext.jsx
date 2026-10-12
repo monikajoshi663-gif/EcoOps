@@ -8,18 +8,80 @@ const AppContext = createContext(null)
 
 export function AppProvider({ children }) {
   const [mode, setMode] = useState(HAS_BACKEND ? 'live' : 'demo')
-  const [role, setRole] = useState('admin')
-  const { mutate } = useSWRConfig()
 
+  const [storedUser, setStoredUser] = useState(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const item = window.localStorage.getItem('ecoops_user')
+        return item ? JSON.parse(item) : null
+      } catch {
+        return null
+      }
+    }
+    return null
+  })
+
+  const [role, setRoleState] = useState(() => {
+    if (storedUser?.role) return storedUser.role
+    return 'admin'
+  })
+
+  const { mutate } = useSWRConfig()
   const refreshAll = useCallback(() => mutate(() => true), [mutate])
 
   const handleSetRole = useCallback((newRole) => {
-    setRole(newRole)
+    setRoleState(newRole)
     const user = DEMO_USERS[newRole]
     if (user && liveApi.setDemoUser) {
       liveApi.setDemoUser(user.id)
     }
   }, [])
+
+  const login = useCallback(
+    async (credentials) => {
+      const data = await liveApi.loginUser(credentials)
+      if (data?.token && data?.user) {
+        localStorage.setItem('ecoops_token', data.token)
+        localStorage.setItem('ecoops_user', JSON.stringify(data.user))
+        setStoredUser(data.user)
+        if (data.user.role) setRoleState(data.user.role)
+        if (liveApi.setDemoUser) liveApi.setDemoUser(data.user.id)
+        refreshAll()
+      }
+      return data
+    },
+    [refreshAll],
+  )
+
+  const signup = useCallback(
+    async (userData) => {
+      const data = await liveApi.registerUser(userData)
+      if (data?.token && data?.user) {
+        localStorage.setItem('ecoops_token', data.token)
+        localStorage.setItem('ecoops_user', JSON.stringify(data.user))
+        setStoredUser(data.user)
+        if (data.user.role) setRoleState(data.user.role)
+        if (liveApi.setDemoUser) liveApi.setDemoUser(data.user.id)
+        refreshAll()
+      }
+      return data
+    },
+    [refreshAll],
+  )
+
+  const logout = useCallback(() => {
+    localStorage.removeItem('ecoops_token')
+    localStorage.removeItem('ecoops_user')
+    setStoredUser(null)
+    setRoleState('student')
+    if (liveApi.setDemoUser) liveApi.setDemoUser('demo-student')
+    refreshAll()
+  }, [refreshAll])
+
+  const user = useMemo(() => {
+    if (storedUser) return storedUser
+    return DEMO_USERS[role] || DEMO_USERS.admin
+  }, [storedUser, role])
 
   const value = useMemo(
     () => ({
@@ -29,10 +91,14 @@ export function AppProvider({ children }) {
       api: mode === 'demo' ? demoApi : liveApi,
       role,
       setRole: handleSetRole,
-      user: DEMO_USERS[role],
+      user,
+      isCustomAuth: !!storedUser,
+      login,
+      signup,
+      logout,
       refreshAll,
     }),
-    [mode, role, handleSetRole, refreshAll],
+    [mode, role, handleSetRole, user, storedUser, login, signup, logout, refreshAll],
   )
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

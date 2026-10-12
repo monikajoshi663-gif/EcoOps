@@ -38,10 +38,12 @@ export async function request(path, { method = 'GET', query, body, signal } = {}
   }
 
   const isForm = typeof FormData !== 'undefined' && body instanceof FormData
+  const token = typeof window !== 'undefined' ? window.localStorage?.getItem('ecoops_token') : null
   const headers = { 
     Accept: 'application/json',
     'X-Demo-User-Id': activeDemoUserId || 'demo-admin'
   }
+  if (token) headers['Authorization'] = `Bearer ${token}`
   if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json'
 
   let response

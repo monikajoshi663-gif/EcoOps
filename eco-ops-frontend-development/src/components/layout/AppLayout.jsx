@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet } from 'react-router-dom'
 import {
   Activity,
   Bell,
@@ -11,6 +11,9 @@ import {
   MessageSquareText,
   MessageSquareWarning,
   X,
+  User,
+  LogIn,
+  LogOut,
 } from 'lucide-react'
 import { useApp } from '../../context/AppContext'
 import { NAV_BY_ROLE, ROLES } from '../../lib/constants'
@@ -87,9 +90,39 @@ function Brand() {
 }
 
 function ControlPanel() {
-  const { mode, setMode, role, setRole } = useApp()
+  const { mode, setMode, role, setRole, user, isCustomAuth, logout } = useApp()
   return (
     <div className="flex flex-col gap-4 border-t border-line px-6 py-5">
+      {/* Account / Auth Widget */}
+      <div className="flex flex-col gap-2 rounded-xl border border-line bg-surface-2 p-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <User className="size-4 text-primary" />
+            <span className="text-xs font-semibold text-fg truncate max-w-[120px]">{user?.name || 'Guest'}</span>
+          </div>
+          <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[10px] font-medium text-primary uppercase">
+            {role}
+          </span>
+        </div>
+
+        {isCustomAuth ? (
+          <button
+            type="button"
+            onClick={logout}
+            className="mt-1 flex items-center justify-center gap-1.5 rounded-lg border border-line bg-surface py-1 text-xs font-medium text-muted hover:text-fg"
+          >
+            <LogOut className="size-3" /> Log Out
+          </button>
+        ) : (
+          <Link
+            to="/auth"
+            className="mt-1 flex items-center justify-center gap-1.5 rounded-lg bg-primary py-1.5 text-xs font-semibold text-primary-fg shadow-sm hover:opacity-90"
+          >
+            <LogIn className="size-3" /> Sign In / Sign Up
+          </Link>
+        )}
+      </div>
+
       <div className="flex flex-col gap-1.5">
         <label htmlFor="role-select" className="text-[11px] font-medium uppercase tracking-wider text-muted">
           Demo role
@@ -195,11 +228,16 @@ export function AppLayout() {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-line bg-surface/90 px-4 py-3 backdrop-blur lg:hidden">
-          <button onClick={() => setOpen(true)} className="text-fg" aria-label="Open navigation">
-            <Menu className="size-5" />
-          </button>
-          <span className="text-sm font-semibold">EcoOps</span>
+        <div className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-surface/90 px-4 py-3 backdrop-blur lg:hidden">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setOpen(true)} className="text-fg" aria-label="Open navigation">
+              <Menu className="size-5" />
+            </button>
+            <span className="text-sm font-semibold">EcoOps</span>
+          </div>
+          <Link to="/auth" className="flex items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 py-1 text-xs font-medium text-fg">
+            <LogIn className="size-3.5 text-primary" /> Sign In
+          </Link>
         </div>
         <DataSourceBanner />
         <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6 md:px-8 md:py-8">
