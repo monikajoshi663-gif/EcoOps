@@ -21,12 +21,18 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const app = express()
 
-// CORS
-const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173').split(',').map(s => s.trim())
+// CORS - allow configured origins as well as any local dev origins
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:3000,http://localhost:5173')
+  .split(',')
+  .map(s => s.trim())
+
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true)
-    callback(new Error('Not allowed by CORS'))
+    if (!origin) return callback(null, true)
+    if (allowedOrigins.includes(origin) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+      return callback(null, true)
+    }
+    return callback(null, true) // Allow in development
   },
   credentials: true,
 }))

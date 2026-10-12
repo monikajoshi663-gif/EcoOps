@@ -1,10 +1,52 @@
 import { useState } from 'react'
-import { Bot, FileText, Send } from 'lucide-react'
+import { Bot, FileText, Send, Sparkles } from 'lucide-react'
+import { marked } from 'marked'
 import { Card, PageHeader, Button, inputClass } from '../components/ui'
 import { useApp } from '../context/AppContext'
 import { readChatReply } from '../api/adapters'
 
-const SUGGESTIONS = ['What are the top 3 problems today?', 'Generate the weekly sustainability report', 'Which building wastes the most water?']
+const SUGGESTIONS = [
+  'What are the top 3 problems today?',
+  'Generate the weekly sustainability report',
+  'Which building wastes the most water?',
+]
+
+function MessageBubble({ message }) {
+  const isUser = message.role === 'user'
+  const isError = message.role === 'error'
+
+  if (isUser) {
+    return (
+      <div className="self-end max-w-[85%] whitespace-pre-wrap rounded-xl bg-primary px-4 py-2.5 text-sm leading-relaxed text-primary-fg shadow-sm">
+        {message.text}
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="self-start max-w-[85%] whitespace-pre-wrap rounded-xl border border-danger/30 bg-danger/10 px-4 py-2.5 text-sm leading-relaxed text-danger">
+        {message.text}
+      </div>
+    )
+  }
+
+  const html = marked.parse(message.text || '', { breaks: true, gfm: true })
+
+  return (
+    <div className="self-start flex gap-3 max-w-[95%] md:max-w-[90%]">
+      <div className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20 shadow-xs">
+        <Bot className="size-4" />
+      </div>
+      <div className="flex-1 rounded-xl border border-line bg-surface-2 p-4 text-sm leading-relaxed text-fg shadow-sm overflow-hidden">
+        <div
+          className="prose-chat"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      </div>
+    </div>
+  )
+}
 
 export default function ChatPage() {
   const { api } = useApp()
@@ -40,15 +82,24 @@ export default function ChatPage() {
           </Button>
         }
       />
-      <Card className="flex min-h-[28rem] flex-col">
+      <Card className="flex min-h-[30rem] flex-col">
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-5" aria-live="polite">
           {messages.length === 0 && (
-            <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-              <Bot className="size-8 text-primary" aria-hidden />
-              <p className="text-sm text-muted">Try one of these:</p>
-              <div className="flex flex-wrap justify-center gap-2">
+            <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center my-8">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20">
+                <Sparkles className="size-6" aria-hidden />
+              </div>
+              <div>
+                <p className="text-base font-medium text-fg">EcoOps Campus Sustainability Assistant</p>
+                <p className="text-sm text-muted mt-1">Ask questions about telemetry anomalies, maintenance tickets, or campus reports.</p>
+              </div>
+              <div className="flex flex-wrap justify-center gap-2 mt-2 max-w-xl">
                 {SUGGESTIONS.map((s) => (
-                  <button key={s} onClick={() => send(s)} className="rounded-full border border-line px-3 py-1.5 text-xs text-fg hover:border-primary">
+                  <button
+                    key={s}
+                    onClick={() => send(s)}
+                    className="rounded-full border border-line bg-surface-2 px-3.5 py-1.5 text-xs text-fg hover:border-primary hover:text-primary transition-colors cursor-pointer"
+                  >
                     {s}
                   </button>
                 ))}
@@ -56,23 +107,22 @@ export default function ChatPage() {
             </div>
           )}
           {messages.map((m, i) => (
-            <div
-              key={i}
-              className={`max-w-[85%] whitespace-pre-wrap rounded-xl px-4 py-2.5 text-sm leading-relaxed ${
-                m.role === 'user'
-                  ? 'self-end bg-primary text-primary-fg'
-                  : m.role === 'error'
-                    ? 'self-start border border-danger/30 bg-danger/10 text-danger'
-                    : 'self-start border border-line bg-surface-2 text-fg'
-              }`}
-            >
-              {m.text}
-            </div>
+            <MessageBubble key={i} message={m} />
           ))}
-          {pending && <div className="self-start rounded-xl border border-line bg-surface-2 px-4 py-2.5 text-sm text-muted">Thinking…</div>}
+          {pending && (
+            <div className="self-start flex gap-3 max-w-[85%]">
+              <div className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20">
+                <Bot className="size-4 animate-pulse" />
+              </div>
+              <div className="rounded-xl border border-line bg-surface-2 px-4 py-3 text-sm text-muted flex items-center gap-2">
+                <span className="size-2 rounded-full bg-primary animate-ping" />
+                Thinking & analyzing campus telemetry…
+              </div>
+            </div>
+          )}
         </div>
         <form
-          className="flex gap-2 border-t border-line p-4"
+          className="flex gap-2 border-t border-line p-4 bg-surface"
           onSubmit={(e) => {
             e.preventDefault()
             send(input)

@@ -38,3 +38,52 @@ body {
 .recharts-tooltip-wrapper {
   outline: none;
 }
+
+/* AI Markdown rendering styles */
+.prose-chat h1, .prose-chat h2, .prose-chat h3 {
+  font-weight: 600;
+  color: var(--color-fg);
+  margin-top: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+.prose-chat h1 { font-size: 1.15rem; }
+.prose-chat h2 { font-size: 1.05rem; }
+.prose-chat h3 { font-size: 0.95rem; }
+.prose-chat p {
+  margin-bottom: 0.5rem;
+}
+.prose-chat p:last-child {
+  margin-bottom: 0;
+}
+.prose-chat ul {
+  list-style-type: disc;
+  padding-left: 1.25rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+.prose-chat ol {
+  list-style-type: decimal;
+  padding-left: 1.25rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+.prose-chat li {
+  margin-bottom: 0.25rem;
+}
+.prose-chat hr {
+  border: 0;
+  border-top: 1px solid var(--color-line);
+  margin: 0.75rem 0;
+}
+.prose-chat strong {
+  font-weight: 600;
+  color: #fff;
+}
+.prose-chat code {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+  font-family: var(--font-mono);
+}
