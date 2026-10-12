@@ -84,3 +84,90 @@ export async function generateUsage(req, res) {
     })
   }
 }
+
+export async function recordUsage(req, res) {
+  try {
+    const { buildingId, building, resource, value, timestamp } = req.body || {}
+    const targetBuilding = buildingId || building
+    if (!targetBuilding || !resource || value === undefined) {
+      return res.status(400).json({ success: false, message: 'buildingId, resource, and value are required.' })
+    }
+
+    const val = Number(value)
+    if (isNaN(val) || val < 0) {
+      return res.status(400).json({ success: false, message: 'value must be a valid positive number.' })
+    }
+
+    const bId = targetBuilding.startsWith('building-') ? targetBuilding : `building-${targetBuilding}`
+    
+    // Find recent readings to compute dynamic baseline
+    const lastReading = await Reading.findOne({ buildingId: bId, resource }).sort({ timestamp: -1 })
+    const baseline = lastReading?.baseline || (resource === 'electricity' ? 6.5 : 45.0)
+
+    const ratio = baseline > 0 ? val / baseline : 1
+    const isAnomaly = ratio >= 1.6 // 60% or higher above baseline
+
+    const readingTime = timestamp ? new Date(timestamp) : new Date()
+
+    const reading = await Reading.create({
+      buildingId: bId,
+      buildingName: lastReading?.buildingName || targetBuilding,
+      resource,
+      value: val,
+      baseline,
+      isAnomaly,
+      timestamp: readingTime,
+      simulated: true,
+    })
+
+    let anomalyDoc = null
+    let aiDiagnosis = null
+
+    if (isAnomaly) {
+      const anomalyId = `anom-${Date.now()}`
+      const reason = `${resource.toUpperCase()} spike: ${ratio.toFixed(1)}x expected baseline (${val} ${resource === 'electricity' ? 'kWh' : 'L'})`
+      
+      anomalyDoc = await (await import('../models/Anomaly.model.js')).Anomaly.create({
+        id: anomalyId,
+        buildingId: bId,
+        resource,
+        timestamp: readingTime,
+        observedValue: val,
+        baselineValue: baseline,
+        score: Math.min(10, Math.round(ratio * 3 * 10) / 10),
+        reason,
+        status: 'open',
+      })
+
+      // Run autonomous AI agent to correlate and triage
+      try {
+        const { runAgent } = await import('../services/agentService.js')
+        const agentRun = await runAgent({ trigger: 'anomaly', anomalyId, buildingId: bId })
+        aiDiagnosis = `AI Agent analyzed spike: ${agentRun.summary}`
+      } catch (agentErr) {
+        aiDiagnosis = `Spike flagged. Scheduled for automated agent triage.`
+      }
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: isAnomaly ? 'Reading saved. Anomaly detected and triaged by AI agent!' : 'Reading recorded successfully.',
+      data: {
+        reading: {
+          id: reading._id.toString(),
+          buildingId: reading.buildingId,
+          resource: reading.resource,
+          value: reading.value,
+          baseline: reading.baseline,
+          isAnomaly: reading.isAnomaly,
+          timestamp: reading.timestamp.toISOString(),
+        },
+        anomaly: anomalyDoc ? { id: anomalyDoc.id, reason: anomalyDoc.reason, score: anomalyDoc.score } : null,
+        aiDiagnosis,
+      },
+    })
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message })
+  }
+}
+

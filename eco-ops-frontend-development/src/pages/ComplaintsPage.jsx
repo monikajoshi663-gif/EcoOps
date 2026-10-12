@@ -174,6 +174,30 @@ function ComplaintList() {
                   </div>
                   <p className="mt-1.5 text-pretty text-sm text-fg">{c.description}</p>
                   <p className="mt-0.5 text-xs text-muted">{c.location}</p>
+
+                  {c.aiAnalysis && (
+                    <div className="mt-2.5 rounded-lg border border-primary/25 bg-primary/5 p-2.5 text-xs">
+                      <div className="flex items-center gap-1.5 font-semibold text-primary">
+                        <span className="size-1.5 rounded-full bg-primary animate-pulse" />
+                        AI Diagnostic Analysis
+                        {c.aiAnalysis.severity && (
+                          <span className={`ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ${
+                            c.aiAnalysis.severity === 'high' ? 'bg-danger/20 text-danger border border-danger/30' : 'bg-primary/20 text-primary border border-primary/30'
+                          }`}>
+                            {c.aiAnalysis.severity} severity
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-fg leading-relaxed">
+                        <strong>Root Cause:</strong> {c.aiAnalysis.rootCause}
+                      </p>
+                      {c.aiAnalysis.recommendedAction && (
+                        <p className="mt-0.5 text-muted">
+                          <strong>Action:</strong> {c.aiAnalysis.recommendedAction}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </li>
             ))}

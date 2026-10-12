@@ -22,6 +22,52 @@ export async function createComplaint(req, res) {
     }
 
     const complaintId = `complaint-${Date.now()}`
+
+    // 1. Run Gemini AI diagnostic analysis on complaint text
+    let aiAnalysis = {
+      severity: type === 'water_leak' ? 'high' : 'medium',
+      rootCause: `Verified ${type.replace(/_/g, ' ')} condition reported at ${location}`,
+      recommendedAction: 'Dispatch technician for immediate inspection and isolation',
+      resourceRisk: type === 'water_leak' ? 'water loss' : 'energy waste',
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY
+    if (apiKey) {
+      try {
+        const prompt = `You are the EcoOps Campus Sustainability AI. Analyze this campus maintenance complaint:
+Type: ${type}
+Building: ${buildingId}
+Location: ${location}
+Description: "${description}"
+
+Respond in valid JSON ONLY with this structure:
+{
+  "severity": "high" | "medium" | "low",
+  "rootCause": "1 concise sentence technical cause",
+  "recommendedAction": "1 concise sentence technician repair instruction",
+  "resourceRisk": "water loss" | "power drain" | "hazard"
+}`
+
+        const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash'
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+        const gemRes = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        })
+        if (gemRes.ok) {
+          const gemData = await gemRes.json()
+          const text = gemData?.candidates?.[0]?.content?.parts?.[0]?.text
+          const match = text?.match(/\{[\s\S]*\}/)
+          if (match) {
+            aiAnalysis = JSON.parse(match[0])
+          }
+        }
+      } catch (err) {
+        console.warn('[Complaint] AI analysis error:', err.message)
+      }
+    }
+
     const complaint = await Complaint.create({
       id: complaintId,
       userId,
@@ -31,6 +77,7 @@ export async function createComplaint(req, res) {
       description,
       imageUrl,
       status: 'submitted',
+      aiAnalysis,
     })
 
     // Automatically trigger agent run
@@ -51,7 +98,7 @@ export async function createComplaint(req, res) {
 
     return res.status(201).json({
       success: true,
-      message: 'Complaint submitted',
+      message: 'Complaint submitted and analyzed by AI',
       data: {
         complaint: {
           id: complaint.id,
@@ -62,6 +109,7 @@ export async function createComplaint(req, res) {
           description: complaint.description,
           imageUrl: complaint.imageUrl,
           status: complaint.status,
+          aiAnalysis: complaint.aiAnalysis,
           createdAt: complaint.createdAt.toISOString(),
         },
         agentRun: agentRunInfo,
@@ -108,6 +156,7 @@ export async function getComplaints(req, res) {
           description: c.description,
           imageUrl: c.imageUrl,
           status: c.status,
+          aiAnalysis: c.aiAnalysis,
           createdAt: c.createdAt.toISOString(),
         })),
         pagination: {

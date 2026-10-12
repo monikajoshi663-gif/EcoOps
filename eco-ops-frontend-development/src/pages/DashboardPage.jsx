@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
-import { PageHeader, Badge } from '../components/ui'
+import { PlusCircle } from 'lucide-react'
+import { PageHeader, Badge, Button } from '../components/ui'
 import { RunAgentButton } from '../components/RunAgentButton'
 import { ImpactCounters } from '../components/dashboard/ImpactCounters'
 import { UsageChart } from '../components/dashboard/UsageChart'
 import { BuildingOverview } from '../components/dashboard/BuildingOverview'
 import { AnomalyList } from '../components/dashboard/AnomalyList'
+import { RecordReadingModal } from '../components/dashboard/RecordReadingModal'
 import { useResource } from '../hooks/useResource'
 import { useApp } from '../context/AppContext'
 import { POLL } from '../config'
@@ -12,6 +14,7 @@ import { BUILDING_NAMES } from '../lib/constants'
 
 export default function DashboardPage() {
   const { role } = useApp()
+  const [modalOpen, setModalOpen] = useState(false)
   const [view, setView] = useState({ building: 'hostel-b', resource: 'water', range: '7d' })
   const overview = useResource('usage-overview', 'getUsage', { range: '24h' }, { refreshInterval: POLL.usage })
   const anomalies = useResource('anomalies', 'getAnomalies', { range: '14d' }, { refreshInterval: POLL.live })
@@ -29,10 +32,16 @@ export default function DashboardPage() {
         actions={
           <>
             <Badge tone="amber">Simulated meter data</Badge>
+            <Button variant="secondary" onClick={() => setModalOpen(true)}>
+              <PlusCircle className="size-4" />
+              Add Building Data
+            </Button>
             {role !== 'student' && <RunAgentButton />}
           </>
         }
       />
+
+      <RecordReadingModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
 
       {/* Real-time Mission-Control Sentinel Banner */}
       <div className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-r from-surface-2 via-surface to-primary/10 p-4 sm:p-5 shadow-sm">

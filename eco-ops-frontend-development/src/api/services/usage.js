@@ -6,3 +6,7 @@ export async function getUsage({ building, buildingId, resource, range } = {}) {
   const bId = buildingId || building
   return unwrapList(await api.get(ENDPOINTS.usage, { building: bId, buildingId: bId, resource, range }), 'series')
 }
+
+export async function recordUsage(data) {
+  return api.post(ENDPOINTS.usage, data)
+}

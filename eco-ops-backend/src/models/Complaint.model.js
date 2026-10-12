@@ -19,6 +19,10 @@ const complaintSchema = new mongoose.Schema(
       default: 'submitted',
       index: true,
     },
+    aiAnalysis: {
+      type: Object,
+      default: null,
+    },
   },
   {
     timestamps: true,
