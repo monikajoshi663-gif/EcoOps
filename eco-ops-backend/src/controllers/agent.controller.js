@@ -95,20 +95,19 @@ export async function agentChat(req, res) {
       ? tickets.map(t => `#${t.id || t._id}: ${t.issue || t.title} at ${t.location} (Status: ${t.status}, Priority: ${t.priority})`).join('\n')
       : 'No active maintenance tickets.'
 
-    const systemPrompt = `You are EcoOps AI, a friendly, highly intelligent, conversational AI assistant for campus sustainability and IoT facilities (similar to ChatGPT, but with specialized awareness of the campus).
+    const isCampusQuery = /(campus|building|hostel|library|water|electricity|power|energy|leak|burst|hvac|sensor|telemetry|anomal|ticket|approval|report|sustainab|save|waste|utility|issue|problem|diagnostic|fix|repair)/i.test(message)
 
-Key behaviors:
-1. Talk naturally, conversationally, warmly, and helpfully. Do NOT follow rigid pre-scripted formats, robotic headers, or static templates.
-2. If the user greets you, asks how you are, makes small talk, or asks general questions, chat with them naturally, just like ChatGPT would.
-3. If the user asks about campus energy, water, sustainability, tickets, anomalies, or maintenance, seamlessly incorporate the live campus data below into your conversation.
-4. When formatting explanations or reports, use clean, readable Markdown (bullet points, bold text) without being overly rigid or repetitive.
+    let systemPrompt = `You are EcoOps AI, a friendly, intelligent, and helpful conversational AI assistant just like ChatGPT.
+Talk naturally, warmly, and concisely. Chat directly with the user without unnecessary formal greetings, boilerplate, or robotic status headers.`
 
-Live Campus Context:
-- Active Anomalies:
-${anomaliesSummary}
-- Active Work Orders / Tickets:
-${ticketsSummary}
+    if (isCampusQuery) {
+      systemPrompt += `
+
+You have access to live campus telemetry. Answer the user's question directly and intelligently using this relevant data:
+- Anomalies: ${anomaliesSummary}
+- Active Tickets: ${ticketsSummary}
 - Pending Approvals: ${approvals.length}`
+    }
 
     let answer = null
 
