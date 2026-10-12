@@ -1,6 +1,6 @@
-export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '')
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000').replace(/\/+$/, '')
 
-export const HAS_BACKEND = API_BASE_URL.length > 0
+export const HAS_BACKEND = true
 
 export const DEMO_USERS = {
   student: { id: import.meta.env.VITE_DEMO_STUDENT_ID || 'demo-student', name: 'Aisha (Student)', role: 'student' },
