@@ -9,8 +9,6 @@ import { Building } from '../models/Building.model.js'
 
 async function callGeminiIfAvailable(prompt) {
   const apiKey = process.env.GEMINI_API_KEY
-  const model = process.env.GEMINI_MODEL || 'gemini-1.5-flash'
-
   if (!apiKey) {
     return {
       available: false,
@@ -18,30 +16,29 @@ async function callGeminiIfAvailable(prompt) {
     }
   }
 
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-      }),
-    })
+  const modelCandidates = [process.env.GEMINI_MODEL, 'gemini-3.5-flash', 'gemini-3.8-flash'].filter(Boolean)
+  for (const model of modelCandidates) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+        }),
+      })
 
-    if (!response.ok) {
-      const errText = await response.text()
-      return {
-        available: false,
-        message: `Gemini API error (${response.status}): ${errText.slice(0, 150)}`,
+      if (response.ok) {
+        const data = await response.json()
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+        return { available: true, text }
       }
+    } catch {
+      // try next candidate
     }
-
-    const data = await response.json()
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-    return { available: true, text }
-  } catch (err) {
-    return { available: false, message: `Gemini call failed: ${err.message}` }
   }
+
+  return { available: false, message: 'Gemini request could not complete across model fallbacks.' }
 }
 
 export async function runAgent({ trigger = 'manual', complaintId = null, buildingId = null, anomalyId = null } = {}) {

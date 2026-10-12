@@ -75,7 +75,7 @@ export async function agentChat(req, res) {
     }
 
     const apiKey = process.env.GEMINI_API_KEY
-    const model = process.env.GEMINI_MODEL || 'gemini-1.5-flash'
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
 
     // Gather recent context from the DB
     const [logs, run] = await Promise.all([
@@ -92,24 +92,38 @@ export async function agentChat(req, res) {
     const context = logs.map(l => `[Step ${l.step}] ${l.thought} (Tool: ${l.tool}, Result: ${l.result})`).join('\n')
     const prompt = `You are the EcoOps sustainability AI assistant. Use the following recent agent activity data to answer the user query truthfully. Do not invent data.\n\nRecent Activity:\n${context || 'No data yet.'}\n\nUser: ${message}`
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
-    const gemRes = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-    })
+    const modelCandidates = [process.env.GEMINI_MODEL, 'gemini-3.5-flash', 'gemini-3.8-flash'].filter(Boolean)
+    let answer = null
+    let lastError = null
 
-    if (!gemRes.ok) {
-      const errText = await gemRes.text()
-      return res.status(502).json({ success: false, message: `Gemini API error (${gemRes.status})` })
+    for (const model of modelCandidates) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+        const gemRes = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        })
+
+        if (gemRes.ok) {
+          const gemData = await gemRes.json()
+          answer = gemData?.candidates?.[0]?.content?.parts?.[0]?.text
+          if (answer) break
+        } else {
+          lastError = `Gemini API error (${gemRes.status})`
+        }
+      } catch (e) {
+        lastError = e.message
+      }
     }
 
-    const gemData = await gemRes.json()
-    const answer = gemData?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from Gemini.'
+    if (!answer) {
+      return res.status(502).json({ success: false, message: lastError || 'Gemini API call failed' })
+    }
 
     return res.json({
       success: true,
-      data: { answer, sourceIds: logs.map(l => l._id?.toString()), simulated: true },
+      data: { answer, sourceIds: logs.map(l => l._id?.toString()), simulated: false },
     })
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message })
