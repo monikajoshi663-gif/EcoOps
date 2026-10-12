@@ -10,6 +10,6 @@ export async function getAgentLogs() {
   return unwrapList(await api.get(ENDPOINTS.agentLogs), 'logs')
 }
 
-export async function chatWithAgent(message) {
-  return api.post(ENDPOINTS.agentChat, { message })
+export async function chatWithAgent(message, history = []) {
+  return api.post(ENDPOINTS.agentChat, { message, history })
 }

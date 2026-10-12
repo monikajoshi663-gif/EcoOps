@@ -48,20 +48,26 @@ Respond in valid JSON ONLY with this structure:
   "resourceRisk": "water loss" | "power drain" | "hazard"
 }`
 
-        const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash'
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
-        const gemRes = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-        })
-        if (gemRes.ok) {
-          const gemData = await gemRes.json()
-          const text = gemData?.candidates?.[0]?.content?.parts?.[0]?.text
-          const match = text?.match(/\{[\s\S]*\}/)
-          if (match) {
-            aiAnalysis = JSON.parse(match[0])
-          }
+        const modelsToTry = [process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite']
+        for (const model of modelsToTry) {
+          try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+            const gemRes = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+              signal: AbortSignal.timeout(6000),
+            })
+            if (gemRes.ok) {
+              const gemData = await gemRes.json()
+              const text = gemData?.candidates?.[0]?.content?.parts?.[0]?.text
+              const match = text?.match(/\{[\s\S]*\}/)
+              if (match) {
+                aiAnalysis = JSON.parse(match[0])
+                break
+              }
+            }
+          } catch (_) {}
         }
       } catch (err) {
         console.warn('[Complaint] AI analysis error:', err.message)

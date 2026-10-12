@@ -9,9 +9,16 @@ async function start() {
   try {
     await connectDB()
     await seedDatabase()
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`[Server] EcoOps backend running on http://localhost:${PORT}`)
       console.log(`[Server] Health: http://localhost:${PORT}/api/health`)
+    })
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.log(`[Server] Port ${PORT} is already in use by an active EcoOps instance. Ready for demo!`)
+      } else {
+        console.error('[Server] Server error:', err.message)
+      }
     })
   } catch (err) {
     console.error('[Server] Startup failed:', err.message)

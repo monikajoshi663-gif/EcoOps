@@ -92,10 +92,11 @@ export default function ChatPage() {
     const message = text.trim()
     if (!message || pending) return
     setInput('')
-    setMessages((m) => [...m, { role: 'user', text: message }])
+    const nextMessages = [...messages, { role: 'user', text: message }]
+    setMessages(nextMessages)
     setPending(true)
     try {
-      const body = await api.chatWithAgent(message)
+      const body = await api.chatWithAgent(message, messages)
       setMessages((m) => [...m, { role: 'agent', text: readChatReply(body) }])
     } catch (err) {
       setMessages((m) => [...m, { role: 'error', text: `Agent unavailable: ${err.message}` }])

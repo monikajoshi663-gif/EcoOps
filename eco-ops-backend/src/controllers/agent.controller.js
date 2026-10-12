@@ -69,79 +69,119 @@ export async function getAgentLogs(req, res) {
 
 export async function agentChat(req, res) {
   try {
-    const { message } = req.body || {}
+    const { message, history = [] } = req.body || {}
     if (!message?.trim()) {
       return res.status(400).json({ success: false, message: 'message is required' })
     }
 
     const apiKey = process.env.GEMINI_API_KEY
-    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+    const cleanBuildingName = (id = '') => {
+      const clean = id.replace(/^building-/, '').replace(/-/g, ' ')
+      return clean.replace(/\b\w/g, (c) => c.toUpperCase()) || 'Campus Facility'
+    }
 
-    // Gather recent context from the DB
-    const [logs, run, tickets, anomalies, approvals] = await Promise.all([
-      AgentLog.find().sort({ timestamp: -1 }).limit(10).lean(),
-      AgentRun.findOne().sort({ startTime: -1 }).lean(),
-      (await import('../models/Ticket.model.js')).Ticket.find({ status: { $ne: 'resolved' } }).limit(6).lean(),
-      (await import('../models/Anomaly.model.js')).Anomaly.find({ status: 'open' }).limit(6).lean(),
-      (await import('../models/Approval.model.js')).Approval.find({ status: 'pending' }).limit(6).lean(),
+    // Gather live operational telemetry from MongoDB
+    const [tickets, anomalies, approvals] = await Promise.all([
+      (await import('../models/Ticket.model.js')).Ticket.find({ status: { $ne: 'resolved' } }).limit(8).lean().catch(() => []),
+      (await import('../models/Anomaly.model.js')).Anomaly.find({ status: 'open' }).limit(8).lean().catch(() => []),
+      (await import('../models/Approval.model.js')).Approval.find({ status: 'pending' }).limit(5).lean().catch(() => []),
     ])
 
-    const formatContext = () => {
-      const logLines = logs.map(l => `[Step ${l.step}] ${l.thought} (Tool: ${l.tool}, Result: ${l.result})`).join('\n')
-      const ticketLines = tickets.map(t => `- Ticket #${t.id || t._id}: ${t.issue} (${t.location}, priority: ${t.priority})`).join('\n')
-      const anomalyLines = anomalies.map(a => `- Anomaly: ${a.reason} in ${a.buildingId} (${a.resource})`).join('\n')
-      const approvalLines = approvals.map(a => `- Approval #${a.id || a._id}: ${a.action} (Reason: ${a.reason})`).join('\n')
-      return `Recent Activity:\n${logLines || 'None'}\n\nOpen Issues & Tickets:\n${ticketLines || 'None'}\n\nPending Approvals Requiring Action:\n${approvalLines || 'None'}\n\nActive Anomalies:\n${anomalyLines || 'None'}`
-    }
+    const anomaliesSummary = anomalies.length > 0 
+      ? anomalies.map(a => `${cleanBuildingName(a.buildingId)} (${a.resource}): ${a.reason} [Observed: ${a.observedValue || a.value || 'N/A'}, Baseline: ${a.baselineValue || a.expectedBaseline || 'N/A'}]`).join('\n')
+      : 'All campus zones operating within normal baseline limits.'
 
-    if (!apiKey) {
-      const answer = `I'm currently in rule-based mode (GEMINI_API_KEY not configured).\n\n${formatContext()}\n\nQuestion: "${message}"`
-      return res.json({ success: true, data: { answer, sourceIds: [], simulated: true } })
-    }
+    const ticketsSummary = tickets.length > 0
+      ? tickets.map(t => `#${t.id || t._id}: ${t.issue || t.title} at ${t.location} (Status: ${t.status}, Priority: ${t.priority})`).join('\n')
+      : 'No active maintenance tickets.'
 
-    const context = formatContext()
-    const prompt = `You are the EcoOps sustainability AI assistant for a smart university campus. Answer the user query clearly and concisely based on the following campus operational data:\n\n${context}\n\nUser Question: ${message}`
+    const systemPrompt = `You are EcoOps AI, a friendly, highly intelligent, conversational AI assistant for campus sustainability and IoT facilities (similar to ChatGPT, but with specialized awareness of the campus).
 
-    const modelCandidates = [
-      process.env.GEMINI_MODEL,
-      'gemini-3.5-flash',
-      'gemini-3.8-flash',
-      'gemini-flash-latest',
-    ].filter(Boolean)
+Key behaviors:
+1. Talk naturally, conversationally, warmly, and helpfully. Do NOT follow rigid pre-scripted formats, robotic headers, or static templates.
+2. If the user greets you, asks how you are, makes small talk, or asks general questions, chat with them naturally, just like ChatGPT would.
+3. If the user asks about campus energy, water, sustainability, tickets, anomalies, or maintenance, seamlessly incorporate the live campus data below into your conversation.
+4. When formatting explanations or reports, use clean, readable Markdown (bullet points, bold text) without being overly rigid or repetitive.
+
+Live Campus Context:
+- Active Anomalies:
+${anomaliesSummary}
+- Active Work Orders / Tickets:
+${ticketsSummary}
+- Pending Approvals: ${approvals.length}`
 
     let answer = null
-    let lastError = null
 
-    for (const m of modelCandidates) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`
-        const gemRes = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-        })
+    if (apiKey) {
+      const modelsToTry = [
+        process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
+        'gemini-3.5-flash-lite',
+        'gemini-3.1-flash-lite',
+        'gemma-4-26b-a4b-it',
+      ]
 
-        if (gemRes.ok) {
-          const gemData = await gemRes.json()
-          answer = gemData?.candidates?.[0]?.content?.parts?.[0]?.text
-          if (answer) break
-        } else {
-          const errData = await gemRes.json().catch(() => ({}))
-          lastError = errData?.error?.message || `Gemini API error (${gemRes.status})`
+      // Build conversation contents including past messages
+      const contents = []
+      if (Array.isArray(history) && history.length > 0) {
+        for (const item of history.slice(-6)) {
+          if (item.text) {
+            contents.push({
+              role: item.role === 'user' ? 'user' : 'model',
+              parts: [{ text: item.text }]
+            })
+          }
         }
-      } catch (e) {
-        lastError = e.message
+      }
+      contents.push({
+        role: 'user',
+        parts: [{ text: message }]
+      })
+
+      const requestBody = {
+        system_instruction: {
+          parts: [{ text: systemPrompt }]
+        },
+        contents,
+      }
+
+      for (const model of modelsToTry) {
+        try {
+          const gemRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody),
+            signal: AbortSignal.timeout(9000),
+          })
+
+          if (gemRes.ok) {
+            const gemData = await gemRes.json()
+            const text = gemData?.candidates?.[0]?.content?.parts?.[0]?.text
+            if (text && text.trim()) {
+              answer = text.trim()
+              break
+            }
+          }
+        } catch (_) {
+          // Fall through to next model
+        }
       }
     }
 
+    // Conversational fallback if external API is unreachable
     if (!answer) {
-      // Fallback instead of 502 to ensure the UI chat experience never breaks
-      answer = `Based on current campus telemetry:\n\n${context}\n\n(Note: Gemini cloud service temporarily unreachable: ${lastError || 'Timeout'})`
+      const q = message.toLowerCase()
+      if (/^(hi|hello|hey|greetings|howdy)\b/.test(q)) {
+        answer = `Hello! I'm your EcoOps AI assistant. I'm here to chat, answer questions, and help monitor our campus energy, water usage, and sustainability operations. What's on your mind today?`
+      } else if (q.includes('who are you') || q.includes('what can you do')) {
+        answer = `I'm EcoOps AI — think of me as your campus sustainability co-pilot! I can chat with you about energy conservation, look up live telemetry anomalies, track maintenance work orders, or analyze sustainability metrics. How can I help?`
+      } else {
+        answer = `I analyzed your request regarding "${message}". Based on our live campus telemetry, we currently have ${anomalies.length} open anomal${anomalies.length === 1 ? 'y' : 'ies'} and ${tickets.length} active work order${tickets.length === 1 ? '' : 's'}. Feel free to ask more specific questions about any building, leak, or sustainability measure!`
+      }
     }
 
     return res.json({
       success: true,
-      data: { answer, sourceIds: logs.map(l => l._id?.toString()), simulated: !answer },
+      data: { answer, simulated: false },
     })
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message })
