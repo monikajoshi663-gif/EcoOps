@@ -27,15 +27,25 @@ export function UsageChart({ building, resource, range, onChange, buildings, ano
   const unit = RESOURCES.find((r) => r.value === resource)?.unit
   const color = COLORS[resource]
 
+  const cleanId = (id) => (id || '').replace(/^building-/, '')
   const anomalyTimes = useMemo(
-    () => new Set((anomalies ?? []).filter((a) => a.buildingId === building && a.resource === resource).map((a) => new Date(a.timestamp).getTime())),
+    () =>
+      new Set(
+        (anomalies ?? [])
+          .filter((a) => cleanId(a.buildingId) === cleanId(building) && a.resource === resource)
+          .map((a) => new Date(a.timestamp).getTime()),
+      ),
     [anomalies, building, resource],
   )
 
   const points = useMemo(
     () =>
       (swr.data ?? [])
-        .map((r) => ({ ...r, t: new Date(r.timestamp).getTime(), anomaly: anomalyTimes.has(new Date(r.timestamp).getTime()) }))
+        .map((r) => ({
+          ...r,
+          t: new Date(r.timestamp).getTime(),
+          anomaly: anomalyTimes.has(new Date(r.timestamp).getTime()) || Boolean(r.isAnomaly),
+        }))
         .sort((a, b) => a.t - b.t),
     [swr.data, anomalyTimes],
   )

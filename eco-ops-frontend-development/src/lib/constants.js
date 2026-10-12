@@ -58,5 +58,8 @@ export function labelFor(list, value) {
 }
 
 export function buildingName(id) {
-  return BUILDING_NAMES[id] ?? id
+  if (!id) return 'Campus Facility'
+  if (BUILDING_NAMES[id]) return BUILDING_NAMES[id]
+  const clean = id.replace(/^building-/, '').replace(/-/g, ' ')
+  return clean.replace(/\b\w/g, (c) => c.toUpperCase())
 }

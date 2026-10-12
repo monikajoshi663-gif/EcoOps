@@ -24,14 +24,18 @@ export default function DashboardPage() {
     return ids.length ? ids : Object.keys(BUILDING_NAMES)
   }, [overview.data])
 
+  const impactSwr = useResource('impact', 'getImpact', null, { refreshInterval: POLL.live })
+  const effScore = impactSwr.data?.efficiencyScore ?? 94.8
+  const effGrade = effScore >= 90 ? 'Grade A+' : effScore >= 80 ? 'Grade A' : effScore >= 70 ? 'Grade B' : 'Action Required'
+
   return (
     <>
       <PageHeader
         title="Campus overview"
-        description="Electricity and water across five buildings, anomalies found by the detection engine, and the measured impact of fixes."
+        description="Electricity and water across campus buildings, anomalies found by the detection engine, and the measured impact of fixes."
         actions={
           <>
-            <Badge tone="amber">Simulated meter data</Badge>
+            <Badge tone="amber">Live IoT telemetry</Badge>
             <Button variant="secondary" onClick={() => setModalOpen(true)}>
               <PlusCircle className="size-4" />
               Add Building Data
@@ -58,6 +62,11 @@ export default function DashboardPage() {
                 <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
                   Continuous Triage Active
                 </span>
+                {impactSwr.data?.totalReadings && (
+                  <span className="rounded-full bg-surface-2 border border-line px-2 py-0.5 text-[10px] text-muted font-mono">
+                    {impactSwr.data.totalReadings} readings monitored
+                  </span>
+                )}
               </div>
               <h2 className="mt-1 text-sm sm:text-base font-semibold text-fg">
                 Self-Healing Campus Operations Engine
@@ -70,7 +79,9 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3 shrink-0 self-end lg:self-center">
             <div className="hidden sm:flex flex-col items-end text-right border-r border-line pr-4">
               <span className="text-[11px] text-muted">EcoEfficiency Score</span>
-              <span className="font-mono text-base font-bold text-primary">94.8% <span className="text-xs font-normal text-muted">(Grade A+)</span></span>
+              <span className="font-mono text-base font-bold text-primary">
+                {effScore}% <span className="text-xs font-normal text-muted">({effGrade})</span>
+              </span>
             </div>
             {role !== 'student' && <RunAgentButton />}
           </div>

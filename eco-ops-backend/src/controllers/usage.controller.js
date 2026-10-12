@@ -87,7 +87,7 @@ export async function generateUsage(req, res) {
 
 export async function recordUsage(req, res) {
   try {
-    const { buildingId, building, resource, value, timestamp } = req.body || {}
+    const { buildingId, building, resource, value, timestamp, location, equipment, occupancy, timeOfDay } = req.body || {}
     const targetBuilding = buildingId || building
     if (!targetBuilding || !resource || value === undefined) {
       return res.status(400).json({ success: false, message: 'buildingId, resource, and value are required.' })
@@ -106,12 +106,13 @@ export async function recordUsage(req, res) {
 
     const ratio = baseline > 0 ? val / baseline : 1
     const isAnomaly = ratio >= 1.6 // 60% or higher above baseline
-
     const readingTime = timestamp ? new Date(timestamp) : new Date()
+
+    const resolvedBuildingName = lastReading?.buildingName || (targetBuilding.replace(/^building-/, '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))
 
     const reading = await Reading.create({
       buildingId: bId,
-      buildingName: lastReading?.buildingName || targetBuilding,
+      buildingName: resolvedBuildingName,
       resource,
       value: val,
       baseline,
@@ -122,8 +123,6 @@ export async function recordUsage(req, res) {
 
     let anomalyDoc = null
     let aiDiagnosis = null
-
-    const resolvedBuildingName = lastReading?.buildingName || (targetBuilding.replace(/^building-/, '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))
 
     if (isAnomaly) {
       const anomalyId = `anom-${Date.now()}`
@@ -152,6 +151,52 @@ export async function recordUsage(req, res) {
       }
     }
 
+    // Call Gemini for instant intelligent Eco-Tips & Energy Optimization Advice
+    let aiTips = [
+      resource === 'electricity'
+        ? `Shift non-essential loads at ${resolvedBuildingName} to off-peak hours (10 PM - 6 AM) to reduce demand charges.`
+        : `Inspect pressure regulators and float valves at ${resolvedBuildingName} to eliminate continuous micro-seepage.`,
+      `Benchmark baseline is ${baseline} ${resource === 'electricity' ? 'kWh' : 'L'}. Operating currently at ${(ratio * 100).toFixed(0)}% of expected target.`
+    ]
+
+    const apiKey = process.env.GEMINI_API_KEY
+    if (apiKey) {
+      try {
+        const prompt = `You are the EcoOps Campus Sustainability AI. A facility telemetry reading was just recorded:
+Building: ${resolvedBuildingName}
+Location: ${location || 'Campus Facilities'}
+Equipment: ${equipment || 'General Utilities'}
+Resource: ${resource} (${val} vs baseline ${baseline})
+Occupancy: ${occupancy || 'Normal'}
+Time: ${timeOfDay || 'Daytime'}
+Anomaly status: ${isAnomaly ? 'ANOMALY SPIKE DETECTED' : 'Normal'}
+
+Provide 2 concise, highly practical energy/water saving tips.
+Respond in valid JSON format ONLY:
+{
+  "tips": ["Tip 1", "Tip 2"]
+}`
+        const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash'
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+        const gemRes = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        })
+        if (gemRes.ok) {
+          const gemData = await gemRes.json()
+          const text = gemData?.candidates?.[0]?.content?.parts?.[0]?.text
+          const match = text?.match(/\{[\s\S]*\}/)
+          if (match) {
+            const parsed = JSON.parse(match[0])
+            if (Array.isArray(parsed.tips) && parsed.tips.length) aiTips = parsed.tips
+          }
+        }
+      } catch (e) {
+        console.warn('[Usage] Gemini tips error:', e.message)
+      }
+    }
+
     return res.status(201).json({
       success: true,
       message: isAnomaly ? 'Reading saved. Anomaly detected and triaged by AI agent!' : 'Reading recorded successfully.',
@@ -167,6 +212,7 @@ export async function recordUsage(req, res) {
         },
         anomaly: anomalyDoc ? { id: anomalyDoc.id, reason: anomalyDoc.reason, score: anomalyDoc.score } : null,
         aiDiagnosis,
+        aiTips,
       },
     })
   } catch (error) {
