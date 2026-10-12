@@ -123,6 +123,8 @@ export async function recordUsage(req, res) {
     let anomalyDoc = null
     let aiDiagnosis = null
 
+    const resolvedBuildingName = lastReading?.buildingName || (targetBuilding.replace(/^building-/, '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))
+
     if (isAnomaly) {
       const anomalyId = `anom-${Date.now()}`
       const reason = `${resource.toUpperCase()} spike: ${ratio.toFixed(1)}x expected baseline (${val} ${resource === 'electricity' ? 'kWh' : 'L'})`
@@ -130,6 +132,7 @@ export async function recordUsage(req, res) {
       anomalyDoc = await (await import('../models/Anomaly.model.js')).Anomaly.create({
         id: anomalyId,
         buildingId: bId,
+        buildingName: resolvedBuildingName,
         resource,
         timestamp: readingTime,
         observedValue: val,

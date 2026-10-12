@@ -4,7 +4,7 @@ const anomalySchema = new mongoose.Schema(
   {
     id: { type: String, unique: true, sparse: true, index: true },
     buildingId: { type: String, required: true, index: true },
-    buildingName: { type: String, required: true },
+    buildingName: { type: String, default: 'Campus Facility' },
     resource: { type: String, enum: ['electricity', 'water'], required: true, index: true },
     timestamp: { type: Date, required: true, index: true },
     observedValue: { type: Number, required: true },
