@@ -1,2 +1,6 @@
 node_modules
+<<<<<<< HEAD
+=======
+dist
+>>>>>>> 9d7c26b8ff39a7d9582c1033fc7e369bacfee63a
 .env
