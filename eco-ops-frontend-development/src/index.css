@@ -1,0 +1,40 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --color-bg: #0b1210;
+  --color-surface: #111a17;
+  --color-surface-2: #16221e;
+  --color-line: #233430;
+  --color-fg: #e8f0ec;
+  --color-muted: #93a69e;
+  --color-primary: #34d399;
+  --color-primary-fg: #052e1f;
+  --color-water: #38bdf8;
+  --color-warn: #fbbf24;
+  --color-danger: #f87171;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.recharts-tooltip-wrapper {
+  outline: none;
+}
