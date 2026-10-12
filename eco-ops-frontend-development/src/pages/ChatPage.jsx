@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bot, FileText, Send, Sparkles } from 'lucide-react'
+import { Bot, FileText, Send, Sparkles, Copy, Check, Printer } from 'lucide-react'
 import { marked } from 'marked'
 import { Card, PageHeader, Button, inputClass } from '../components/ui'
 import { useApp } from '../context/AppContext'
@@ -12,6 +12,7 @@ const SUGGESTIONS = [
 ]
 
 function MessageBubble({ message }) {
+  const [copied, setCopied] = useState(false)
   const isUser = message.role === 'user'
   const isError = message.role === 'error'
 
@@ -33,8 +34,18 @@ function MessageBubble({ message }) {
 
   const html = marked.parse(message.text || '', { breaks: true, gfm: true })
 
+  const handleCopy = () => {
+    navigator.clipboard?.writeText(message.text || '')
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handlePrint = () => {
+    window.print()
+  }
+
   return (
-    <div className="self-start flex gap-3 max-w-[95%] md:max-w-[90%]">
+    <div className="self-start flex gap-3 max-w-[95%] md:max-w-[90%] group">
       <div className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20 shadow-xs">
         <Bot className="size-4" />
       </div>
@@ -43,6 +54,29 @@ function MessageBubble({ message }) {
           className="prose-chat"
           dangerouslySetInnerHTML={{ __html: html }}
         />
+        <div className="mt-3.5 flex items-center justify-between border-t border-line/70 pt-2.5 text-[11px] text-muted">
+          <span className="flex items-center gap-1.5 font-mono text-[10px] text-primary">
+            <span className="size-1.5 rounded-full bg-primary" /> Gemini 3.5 Flash Diagnostic
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-muted hover:bg-surface hover:text-fg transition-colors cursor-pointer"
+              title="Copy response"
+            >
+              {copied ? <Check className="size-3 text-primary" /> : <Copy className="size-3" />}
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-muted hover:bg-surface hover:text-fg transition-colors cursor-pointer"
+              title="Print report"
+            >
+              <Printer className="size-3" />
+              Print / PDF
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )

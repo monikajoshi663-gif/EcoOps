@@ -17,7 +17,6 @@ export async function createComplaint({ userId, type, buildingId, location, desc
   const file = photo || image
   if (file) {
     form.append('photo', file)
-    form.append('image', file)
   }
   return unwrapObject(await api.post(ENDPOINTS.complaints, form), 'complaint')
 }

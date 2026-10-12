@@ -7,5 +7,12 @@ const router = Router()
 router.use(authMiddleware)
 router.get('/', getComplaints)
 router.get('/:id', getComplaintById)
-router.post('/', uploadPhoto.single('photo'), createComplaint)
+router.post(
+  '/',
+  uploadPhoto.fields([
+    { name: 'photo', maxCount: 1 },
+    { name: 'image', maxCount: 1 },
+  ]),
+  createComplaint
+)
 export default router

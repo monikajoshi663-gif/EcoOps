@@ -16,6 +16,9 @@ export async function createComplaint(req, res) {
     let imageUrl = null
     if (req.file) {
       imageUrl = `/uploads/${req.file.filename}`
+    } else if (req.files) {
+      const file = req.files['photo']?.[0] || req.files['image']?.[0]
+      if (file) imageUrl = `/uploads/${file.filename}`
     }
 
     const complaintId = `complaint-${Date.now()}`

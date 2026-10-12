@@ -34,6 +34,40 @@ export default function DashboardPage() {
         }
       />
 
+      {/* Real-time Mission-Control Sentinel Banner */}
+      <div className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-r from-surface-2 via-surface to-primary/10 p-4 sm:p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-3.5">
+            <div className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/20 text-primary border border-primary/30 shadow-xs">
+              <span className="flex size-3 rounded-full bg-primary animate-ping" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+                  Agent Sentinel · 24/7 Autonomous Watch
+                </span>
+                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                  Continuous Triage Active
+                </span>
+              </div>
+              <h2 className="mt-1 text-sm sm:text-base font-semibold text-fg">
+                Self-Healing Campus Operations Engine
+              </h2>
+              <p className="mt-0.5 text-xs text-muted max-w-2xl leading-relaxed">
+                Correlating real-time IoT water & power spikes with complaints, assigning specialized technicians, and calculating verified ROI savings.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 shrink-0 self-end lg:self-center">
+            <div className="hidden sm:flex flex-col items-end text-right border-r border-line pr-4">
+              <span className="text-[11px] text-muted">EcoEfficiency Score</span>
+              <span className="font-mono text-base font-bold text-primary">94.8% <span className="text-xs font-normal text-muted">(Grade A+)</span></span>
+            </div>
+            {role !== 'student' && <RunAgentButton />}
+          </div>
+        </div>
+      </div>
+
       <ImpactCounters />
 
       <div className="grid gap-6 xl:grid-cols-3">
