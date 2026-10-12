@@ -36,6 +36,13 @@ export const BUILDING_NAMES = {
   academic: 'Academic Block',
   library: 'Library',
   labs: 'Labs & Workshop',
+  'building-hostel-a': 'Hostel A',
+  'building-hostel-b': 'Hostel B',
+  'building-academic-block': 'Academic Block',
+  'building-library': 'Library',
+  'building-canteen': 'Canteen',
+  'building-labs': 'Labs & Workshop',
+  canteen: 'Canteen',
 }
 
 export const ROLES = ['student', 'staff', 'admin']
