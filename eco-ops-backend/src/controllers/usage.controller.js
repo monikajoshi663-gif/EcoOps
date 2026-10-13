@@ -1,5 +1,6 @@
 import { Reading } from '../models/Reading.model.js'
 import { seedDatabase } from '../services/seedService.js'
+import { DEFAULT_GEMINI_MODEL } from '../config/constants.js'
 
 export async function getUsage(req, res) {
   try {
@@ -176,7 +177,7 @@ Respond in valid JSON format ONLY:
 {
   "tips": ["Tip 1", "Tip 2"]
 }`
-        const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash'
+        const model = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
         const gemRes = await fetch(url, {
           method: 'POST',

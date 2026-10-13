@@ -26,5 +26,5 @@ export const TEAMS = [
   { id: 'facilities', name: 'General Facilities' },
 ]
 
-export const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash'
+export const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash'
 

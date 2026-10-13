@@ -1,6 +1,7 @@
 import { AgentRun } from '../models/AgentRun.model.js'
 import { AgentLog } from '../models/AgentLog.model.js'
 import { runAgent } from '../services/agentService.js'
+import { DEFAULT_GEMINI_MODEL } from '../config/constants.js'
 
 export async function startAgentRun(req, res) {
   try {
@@ -113,7 +114,8 @@ You have access to live campus telemetry. Answer the user's question directly an
 
     if (apiKey) {
       const modelsToTry = [
-        process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
+        process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
+        'gemini-3.8-flash',
         'gemini-3.5-flash-lite',
         'gemini-3.1-flash-lite',
         'gemma-4-26b-a4b-it',

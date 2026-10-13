@@ -6,6 +6,7 @@ import { Ticket } from '../models/Ticket.model.js'
 import { Approval } from '../models/Approval.model.js'
 import { Notification } from '../models/Notification.model.js'
 import { Building } from '../models/Building.model.js'
+import { DEFAULT_GEMINI_MODEL } from '../config/constants.js'
 
 async function callGeminiIfAvailable(prompt) {
   const apiKey = process.env.GEMINI_API_KEY
@@ -16,7 +17,7 @@ async function callGeminiIfAvailable(prompt) {
     }
   }
 
-  const modelCandidates = [process.env.GEMINI_MODEL, 'gemini-3.5-flash', 'gemini-3.8-flash'].filter(Boolean)
+  const modelCandidates = [process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL, 'gemini-3.8-flash', 'gemini-3.5-flash-lite'].filter(Boolean)
   for (const model of modelCandidates) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`

@@ -1,5 +1,6 @@
 import { Complaint } from '../models/Complaint.model.js'
 import { runAgent } from '../services/agentService.js'
+import { DEFAULT_GEMINI_MODEL } from '../config/constants.js'
 
 export async function createComplaint(req, res) {
   try {
@@ -48,7 +49,7 @@ Respond in valid JSON ONLY with this structure:
   "resourceRisk": "water loss" | "power drain" | "hazard"
 }`
 
-        const modelsToTry = [process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite']
+        const modelsToTry = [process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL, 'gemini-3.8-flash', 'gemini-3.5-flash-lite']
         for (const model of modelsToTry) {
           try {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`

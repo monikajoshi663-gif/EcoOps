@@ -1,5 +1,32 @@
-node_modules
-<<<<<<< HEAD
-=======
-dist
->>>>>>> 9d7c26b8ff39a7d9582c1033fc7e369bacfee63a
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Environment Variables
+.env
+.env*.local
+!.env.example
+
+# Production builds
+dist/
+build/
+.next/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# System & IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
